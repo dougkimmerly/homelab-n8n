@@ -1,0 +1,148 @@
+{
+  "updatedAt": "2025-12-07T23:43:45.000Z",
+  "createdAt": "2025-12-07T23:43:24.120Z",
+  "id": "O8fUOAjjFSTqh808",
+  "name": "via Get new dates Reverse",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7,
+              "triggerAtMinute": 15
+            }
+          ]
+        }
+      },
+      "id": "f630f4d3-6df8-4e1d-8329-38d4978af6c7",
+      "name": "Daily 7:15am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5001/api/run-command",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"command\": \"calendar\",\n  \"args\": [\"--from-latest\", \"--direction\", \"vt\"]\n}",
+        "options": {}
+      },
+      "id": "d6427e4f-d812-4e97-bb22-7f487355156f",
+      "name": "Run Calendar Scan (VT)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Daily 7:15am": {
+      "main": [
+        [
+          {
+            "node": "Run Calendar Scan (VT)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Daily 7:15am": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "6213f4ed-a676-45e7-a99e-5ff086ec60c4",
+  "activeVersionId": "6213f4ed-a676-45e7-a99e-5ff086ec60c4",
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2025-12-07T23:43:24.132Z",
+      "createdAt": "2025-12-07T23:43:24.132Z",
+      "role": "workflow:owner",
+      "workflowId": "O8fUOAjjFSTqh808",
+      "projectId": "iEva53ehnxR22Wsc"
+    }
+  ],
+  "activeVersion": {
+    "updatedAt": "2025-12-18T00:40:31.236Z",
+    "createdAt": "2025-12-18T00:40:31.236Z",
+    "versionId": "6213f4ed-a676-45e7-a99e-5ff086ec60c4",
+    "workflowId": "O8fUOAjjFSTqh808",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "triggerAtHour": 7,
+                "triggerAtMinute": 15
+              }
+            ]
+          }
+        },
+        "id": "f630f4d3-6df8-4e1d-8329-38d4978af6c7",
+        "name": "Daily 7:15am",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          460,
+          460
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://127.0.0.1:5001/api/run-command",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\n  \"command\": \"calendar\",\n  \"args\": [\"--from-latest\", \"--direction\", \"vt\"]\n}",
+          "options": {}
+        },
+        "id": "d6427e4f-d812-4e97-bb22-7f487355156f",
+        "name": "Run Calendar Scan (VT)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          680,
+          460
+        ]
+      }
+    ],
+    "connections": {
+      "Daily 7:15am": {
+        "main": [
+          [
+            {
+              "node": "Run Calendar Scan (VT)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "system migration",
+    "name": null,
+    "description": null
+  },
+  "tags": []
+}

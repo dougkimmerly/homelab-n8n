@@ -182,11 +182,12 @@ homelab-n8n/
 
 *Last updated: 2025-12-26*
 
-### CasaOS Instance (4 workflows)
+### CasaOS Instance (5 workflows)
 
 | Workflow | ID | Status | Trigger | Purpose |
 |----------|-----|--------|---------|---------|
 | Galley Recipe Scanner | jhz0aTSMaqnbHddS | Active | Daily 6am + Webhook | Extract recipes from scanned images/PDFs using Claude |
+| Galley Local Scan Upload | LJPgiSSwNsDCKqFx | **Inactive** | Webhook POST | Process local scans (base64) from Galley app |
 | Workflow Backup to GitHub - CasaOS | sxcb1pmVzDnwX4Hf | Active | Every 6 hours | Backup all workflows to GitHub |
 | Galley Scanner Status | v8Ecqgjmv15tlmoR | Active | Webhook | Return pending scan count for Galley app |
 | Music Library Nightly Maintenance | wchLTqQ48tNI7bZk | Active | Daily 2am | Scan, enrich, tag, and fetch lyrics |

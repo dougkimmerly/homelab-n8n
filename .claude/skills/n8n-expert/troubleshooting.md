@@ -121,3 +121,62 @@ tail -f ~/Library/Logs/n8n.log
 - Different port: 5679
 - Docker path: `/volume1/docker/n8n`
 - Use full docker path: `sudo /usr/local/bin/docker`
+
+---
+
+## MCP Tool Issues
+
+The n8n MCP server (nanoapi-io/n8n-mcp-server) has several bugs that affect workflow management.
+
+### update_workflow Fails
+
+**Symptoms:**
+```
+MCP error 1003: request/body/settings must NOT have additional properties (Status: 400)
+```
+
+**Cause:** The MCP server sends extra properties in the settings object that n8n API rejects.
+
+**Workaround:**
+- Cannot update existing workflows via MCP
+- Use `create_workflow` to create new workflows instead
+- Modify existing workflows manually in n8n UI
+- For adding features: create a separate companion workflow
+
+### activate_workflow / deactivate_workflow Fails
+
+**Symptoms:**
+```
+MCP error 1003: unsupported media type application/x-www-form-urlencoded (Status: 415)
+```
+
+**Cause:** The MCP server sends wrong Content-Type header for these endpoints.
+
+**Workaround:**
+- Activate/deactivate workflows manually in n8n UI
+- Created workflows start inactive by default
+
+### Working MCP Operations
+
+These operations work correctly:
+- `list_workflows` - List all workflows
+- `get_workflow` - Get workflow details
+- `create_workflow` - Create new workflow (works!)
+- `delete_workflow` - Delete workflow
+- `list_executions` - List executions
+- `get_execution` - Get execution details
+- `run_webhook` - Trigger webhook workflows
+
+### Best Practice for Complex Changes
+
+When you need to add features to an existing workflow:
+1. **Option A:** Create a separate companion workflow
+   - Use `create_workflow` to create the new piece
+   - Have it call/integrate with the existing workflow via HTTP or sub-workflow
+2. **Option B:** Prepare changes for manual application
+   - Document the exact nodes and connections needed
+   - Apply changes in the n8n UI manually
+3. **Option C:** Export, modify, reimport
+   - Export existing workflow JSON from n8n UI
+   - Modify the JSON
+   - Delete old workflow and create new one via MCP

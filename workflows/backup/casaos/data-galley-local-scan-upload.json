@@ -1,0 +1,845 @@
+{
+  "updatedAt": "2025-12-26T22:45:08.670Z",
+  "createdAt": "2025-12-26T22:43:47.874Z",
+  "id": "eJSYcTSOqISOdjYh",
+  "name": "[Data] Galley Local Scan Upload",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "galley-local-scan",
+        "options": {}
+      },
+      "id": "webhook-local-scan",
+      "name": "Local Scan Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        256,
+        304
+      ],
+      "webhookId": "6dd36bcd-a0fe-4006-abd3-e775108654d9"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Transform webhook payload for local scan upload\n// Expects: { filename: string, file: base64_string }\n\nconst body = $json.body || $json;\nconst filename = body.filename || 'unknown.pdf';\nlet base64Data = body.file;\n\nif (!base64Data) {\n  throw new Error('Missing required field: file (base64 encoded PDF/image)');\n}\n\n// Strip data URL prefix if present (e.g., \"data:application/pdf;base64,\")\nif (base64Data.includes(',')) {\n  base64Data = base64Data.split(',')[1];\n}\n\n// Remove any whitespace/newlines that might be in the base64\nbase64Data = base64Data.replace(/\\s/g, '');\n\nconst ext = filename.toLowerCase().split('.').pop();\nconst mimeType = ext === 'pdf' ? 'application/pdf' : \n                 ['jpg', 'jpeg'].includes(ext) ? 'image/jpeg' :\n                 ext === 'png' ? 'image/png' : 'application/octet-stream';\n\nreturn {\n  json: {\n    filename: filename,\n    fileExtension: ext,\n    mimeType: mimeType,\n    file_base64: base64Data,\n    source: 'local'\n  }\n};"
+      },
+      "name": "Parse Upload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        304
+      ],
+      "id": "parse-upload"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.fileExtension }}",
+              "rightValue": "pdf",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Is PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        704,
+        304
+      ],
+      "id": "is-pdf-check"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const base64Data = $json.file_base64;\nconst filename = $json.filename;\n\nconst requestBody = {\n  model: 'claude-sonnet-4-20250514',\n  max_tokens: 32768,\n  system: `You are a recipe extraction specialist. Extract recipe data from the provided PDF document and return ONLY valid JSON with no markdown formatting.\n\nFor each recipe, include \"page_numbers\" - an array of the PDF page numbers (1-indexed) where that recipe appears.\n\nReturn this exact structure:\n{\n  \"source_file\": \"filename\",\n  \"scanned_date\": \"YYYY-MM-DD\",\n  \"processed_date\": \"ISO timestamp\",\n  \"processing_notes\": \"your notes\",\n  \"confidence\": \"high|medium|low\",\n  \"total_pages\": 5,\n  \"recipes\": [{\n    \"name\": \"Recipe Name\",\n    \"page_numbers\": [1, 2],\n    \"description\": \"Brief description\",\n    \"ingredients\": [{\"name\": \"ingredient\", \"amount\": 1, \"unit\": \"cup\", \"notes\": \"diced\"}],\n    \"instructions\": [\"Step 1\", \"Step 2\"],\n    \"source_url\": null,\n    \"source_name\": \"Book Title, p.XX\",\n    \"prep_time\": 15,\n    \"cook_time\": 30,\n    \"total_time\": 45,\n    \"servings\": 4,\n    \"difficulty\": \"easy|medium|hard\",\n    \"tags\": [\"tag1\", \"tag2\"],\n    \"one_pot\": true,\n    \"no_oven\": true,\n    \"pressure_cooker\": false,\n    \"notes\": \"Tips and storage\",\n    \"incomplete_fields\": [],\n    \"extraction_notes\": null\n  }],\n  \"raw_text_extract\": \"Include if confidence is low\"\n}\n\nThis is for a sailboat galley - flag recipes requiring an oven (no_oven: false). Prefer one-pot meals. Return ONLY JSON.`,\n  messages: [{\n    role: 'user',\n    content: [\n      {\n        type: 'document',\n        source: {\n          type: 'base64',\n          media_type: 'application/pdf',\n          data: base64Data\n        }\n      },\n      {\n        type: 'text',\n        text: `Extract all recipes from this PDF document. Filename: ${filename}. Remember to include page_numbers for each recipe.`\n      }\n    ]\n  }]\n};\n\nreturn {\n  json: {\n    apiRequest: requestBody,\n    filename: filename\n  }\n};"
+      },
+      "name": "Build PDF Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        208
+      ],
+      "id": "build-pdf-request"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const base64Data = $json.file_base64;\nconst filename = $json.filename;\nconst mimeType = $json.mimeType;\n\nconst requestBody = {\n  model: 'claude-sonnet-4-20250514',\n  max_tokens: 8192,\n  system: `You are a recipe extraction specialist. Extract recipe data from the provided image and return ONLY valid JSON with no markdown formatting.\n\nReturn this structure:\n{\n  \"source_file\": \"filename\",\n  \"scanned_date\": \"YYYY-MM-DD\",\n  \"processed_date\": \"ISO timestamp\",\n  \"processing_notes\": \"your notes\",\n  \"confidence\": \"high|medium|low\",\n  \"recipes\": [{\n    \"name\": \"Recipe Name\",\n    \"description\": \"Brief description\",\n    \"ingredients\": [{\"name\": \"ingredient\", \"amount\": 1, \"unit\": \"cup\", \"notes\": \"diced\"}],\n    \"instructions\": [\"Step 1\", \"Step 2\"],\n    \"source_url\": null,\n    \"source_name\": \"Book Title, p.XX\",\n    \"prep_time\": 15,\n    \"cook_time\": 30,\n    \"total_time\": 45,\n    \"servings\": 4,\n    \"difficulty\": \"easy|medium|hard\",\n    \"tags\": [\"tag1\", \"tag2\"],\n    \"one_pot\": true,\n    \"no_oven\": true,\n    \"pressure_cooker\": false,\n    \"notes\": \"Tips and storage\",\n    \"incomplete_fields\": [],\n    \"extraction_notes\": null\n  }],\n  \"raw_text_extract\": \"Include if confidence is low\"\n}\n\nThis is for a sailboat galley - flag recipes requiring an oven (no_oven: false). If image is upside down, read it correctly. Return ONLY JSON.`,\n  messages: [{\n    role: 'user',\n    content: [\n      {\n        type: 'image',\n        source: {\n          type: 'base64',\n          media_type: mimeType,\n          data: base64Data\n        }\n      },\n      {\n        type: 'text',\n        text: `Extract all recipes from this image. Filename: ${filename}`\n      }\n    ]\n  }]\n};\n\nreturn {\n  json: {\n    apiRequest: requestBody,\n    filename: filename\n  }\n};"
+      },
+      "name": "Build Image Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        400
+      ],
+      "id": "build-image-request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.apiRequest) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 5000
+            }
+          }
+        }
+      },
+      "name": "Claude Extract PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1152,
+        176
+      ],
+      "id": "claude-pdf",
+      "credentials": {
+        "anthropicApi": {
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.apiRequest) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 5000
+            }
+          }
+        }
+      },
+      "name": "Claude Extract Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1136,
+        400
+      ],
+      "id": "claude-image",
+      "credentials": {
+        "anthropicApi": {
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const claudeResponse = $json;\nconst filename = $('Parse Upload').item.json.filename;\nconst content = claudeResponse.content[0].text;\n\nlet recipeData;\ntry {\n  let cleanJson = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  recipeData = JSON.parse(cleanJson);\n} catch (e) {\n  recipeData = {\n    source_file: filename,\n    scanned_date: new Date().toISOString().split('T')[0],\n    processed_date: new Date().toISOString(),\n    processing_notes: 'Failed to parse Claude response: ' + e.message,\n    confidence: 'low',\n    recipes: [],\n    raw_text_extract: content\n  };\n}\n\nrecipeData.source_file = recipeData.source_file || filename;\nrecipeData.processed_date = recipeData.processed_date || new Date().toISOString();\nrecipeData.scanned_date = recipeData.scanned_date || new Date().toISOString().split('T')[0];\nrecipeData.filename = filename;\nrecipeData.source = 'local';\n\nreturn { json: recipeData };"
+      },
+      "name": "Parse Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        304
+      ],
+      "id": "parse-results"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.confidence }}",
+              "rightValue": "low",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Check Confidence",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        304
+      ],
+      "id": "check-confidence"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "owner": {
+          "__rl": true,
+          "value": "dougkimmerly",
+          "mode": "list"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "galley-meal-planner",
+          "mode": "list"
+        },
+        "filePath": "={{ 'pending-recipes/' + $now.format('yyyy-MM-dd') + '_' + $json.source_file.replace(/\\.[^/.]+$/, '') + '.json' }}",
+        "fileContent": "={{ JSON.stringify($json, null, 2) }}",
+        "commitMessage": "={{ 'Add local scan: ' + ($json.recipes[0]?.name || $json.source_file) }}"
+      },
+      "name": "Push to Pending",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        208
+      ],
+      "id": "push-pending",
+      "webhookId": "057ebafa-ca4c-471b-b36a-e9cf19d87a24",
+      "credentials": {
+        "githubApi": {
+          "name": "GitHub - Workflow Backup"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "owner": {
+          "__rl": true,
+          "value": "dougkimmerly",
+          "mode": "list"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "galley-meal-planner",
+          "mode": "list"
+        },
+        "filePath": "={{ 'failed-recipes/' + $now.format('yyyy-MM-dd') + '_' + $json.source_file.replace(/\\.[^/.]+$/, '') + '.json' }}",
+        "fileContent": "={{ JSON.stringify($json, null, 2) }}",
+        "commitMessage": "={{ 'Add failed local scan: ' + $json.source_file }}"
+      },
+      "name": "Push to Failed",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        400
+      ],
+      "id": "push-failed",
+      "webhookId": "7bfbf7f8-097e-48d1-8526-71a1e648354e",
+      "credentials": {
+        "githubApi": {
+          "name": "GitHub - Workflow Backup"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Local Scan Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Upload": {
+      "main": [
+        [
+          {
+            "node": "Is PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is PDF?": {
+      "main": [
+        [
+          {
+            "node": "Build PDF Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Image Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build PDF Request": {
+      "main": [
+        [
+          {
+            "node": "Claude Extract PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Image Request": {
+      "main": [
+        [
+          {
+            "node": "Claude Extract Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Extract PDF": {
+      "main": [
+        [
+          {
+            "node": "Parse Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Extract Image": {
+      "main": [
+        [
+          {
+            "node": "Parse Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Results": {
+      "main": [
+        [
+          {
+            "node": "Check Confidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Confidence": {
+      "main": [
+        [
+          {
+            "node": "Push to Pending",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Push to Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 3600,
+    "timezone": "UTC",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "54daac20-fa13-464d-b62e-91d7284774c4",
+  "activeVersionId": "54daac20-fa13-464d-b62e-91d7284774c4",
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2025-12-26T22:43:47.891Z",
+      "createdAt": "2025-12-26T22:43:47.891Z",
+      "role": "workflow:owner",
+      "workflowId": "eJSYcTSOqISOdjYh",
+      "projectId": "JPWSGHc23xq8qrMV"
+    }
+  ],
+  "activeVersion": {
+    "updatedAt": "2025-12-26T22:45:11.000Z",
+    "createdAt": "2025-12-26T22:45:08.677Z",
+    "versionId": "54daac20-fa13-464d-b62e-91d7284774c4",
+    "workflowId": "eJSYcTSOqISOdjYh",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "galley-local-scan",
+          "options": {}
+        },
+        "id": "webhook-local-scan",
+        "name": "Local Scan Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          256,
+          304
+        ],
+        "webhookId": "6dd36bcd-a0fe-4006-abd3-e775108654d9"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Transform webhook payload for local scan upload\n// Expects: { filename: string, file: base64_string }\n\nconst body = $json.body || $json;\nconst filename = body.filename || 'unknown.pdf';\nlet base64Data = body.file;\n\nif (!base64Data) {\n  throw new Error('Missing required field: file (base64 encoded PDF/image)');\n}\n\n// Strip data URL prefix if present (e.g., \"data:application/pdf;base64,\")\nif (base64Data.includes(',')) {\n  base64Data = base64Data.split(',')[1];\n}\n\n// Remove any whitespace/newlines that might be in the base64\nbase64Data = base64Data.replace(/\\s/g, '');\n\nconst ext = filename.toLowerCase().split('.').pop();\nconst mimeType = ext === 'pdf' ? 'application/pdf' : \n                 ['jpg', 'jpeg'].includes(ext) ? 'image/jpeg' :\n                 ext === 'png' ? 'image/png' : 'application/octet-stream';\n\nreturn {\n  json: {\n    filename: filename,\n    fileExtension: ext,\n    mimeType: mimeType,\n    file_base64: base64Data,\n    source: 'local'\n  }\n};"
+        },
+        "name": "Parse Upload",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          480,
+          304
+        ],
+        "id": "parse-upload"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.fileExtension }}",
+                "rightValue": "pdf",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "name": "Is PDF?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          704,
+          304
+        ],
+        "id": "is-pdf-check"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const base64Data = $json.file_base64;\nconst filename = $json.filename;\n\nconst requestBody = {\n  model: 'claude-sonnet-4-20250514',\n  max_tokens: 32768,\n  system: `You are a recipe extraction specialist. Extract recipe data from the provided PDF document and return ONLY valid JSON with no markdown formatting.\n\nFor each recipe, include \"page_numbers\" - an array of the PDF page numbers (1-indexed) where that recipe appears.\n\nReturn this exact structure:\n{\n  \"source_file\": \"filename\",\n  \"scanned_date\": \"YYYY-MM-DD\",\n  \"processed_date\": \"ISO timestamp\",\n  \"processing_notes\": \"your notes\",\n  \"confidence\": \"high|medium|low\",\n  \"total_pages\": 5,\n  \"recipes\": [{\n    \"name\": \"Recipe Name\",\n    \"page_numbers\": [1, 2],\n    \"description\": \"Brief description\",\n    \"ingredients\": [{\"name\": \"ingredient\", \"amount\": 1, \"unit\": \"cup\", \"notes\": \"diced\"}],\n    \"instructions\": [\"Step 1\", \"Step 2\"],\n    \"source_url\": null,\n    \"source_name\": \"Book Title, p.XX\",\n    \"prep_time\": 15,\n    \"cook_time\": 30,\n    \"total_time\": 45,\n    \"servings\": 4,\n    \"difficulty\": \"easy|medium|hard\",\n    \"tags\": [\"tag1\", \"tag2\"],\n    \"one_pot\": true,\n    \"no_oven\": true,\n    \"pressure_cooker\": false,\n    \"notes\": \"Tips and storage\",\n    \"incomplete_fields\": [],\n    \"extraction_notes\": null\n  }],\n  \"raw_text_extract\": \"Include if confidence is low\"\n}\n\nThis is for a sailboat galley - flag recipes requiring an oven (no_oven: false). Prefer one-pot meals. Return ONLY JSON.`,\n  messages: [{\n    role: 'user',\n    content: [\n      {\n        type: 'document',\n        source: {\n          type: 'base64',\n          media_type: 'application/pdf',\n          data: base64Data\n        }\n      },\n      {\n        type: 'text',\n        text: `Extract all recipes from this PDF document. Filename: ${filename}. Remember to include page_numbers for each recipe.`\n      }\n    ]\n  }]\n};\n\nreturn {\n  json: {\n    apiRequest: requestBody,\n    filename: filename\n  }\n};"
+        },
+        "name": "Build PDF Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          912,
+          208
+        ],
+        "id": "build-pdf-request"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const base64Data = $json.file_base64;\nconst filename = $json.filename;\nconst mimeType = $json.mimeType;\n\nconst requestBody = {\n  model: 'claude-sonnet-4-20250514',\n  max_tokens: 8192,\n  system: `You are a recipe extraction specialist. Extract recipe data from the provided image and return ONLY valid JSON with no markdown formatting.\n\nReturn this structure:\n{\n  \"source_file\": \"filename\",\n  \"scanned_date\": \"YYYY-MM-DD\",\n  \"processed_date\": \"ISO timestamp\",\n  \"processing_notes\": \"your notes\",\n  \"confidence\": \"high|medium|low\",\n  \"recipes\": [{\n    \"name\": \"Recipe Name\",\n    \"description\": \"Brief description\",\n    \"ingredients\": [{\"name\": \"ingredient\", \"amount\": 1, \"unit\": \"cup\", \"notes\": \"diced\"}],\n    \"instructions\": [\"Step 1\", \"Step 2\"],\n    \"source_url\": null,\n    \"source_name\": \"Book Title, p.XX\",\n    \"prep_time\": 15,\n    \"cook_time\": 30,\n    \"total_time\": 45,\n    \"servings\": 4,\n    \"difficulty\": \"easy|medium|hard\",\n    \"tags\": [\"tag1\", \"tag2\"],\n    \"one_pot\": true,\n    \"no_oven\": true,\n    \"pressure_cooker\": false,\n    \"notes\": \"Tips and storage\",\n    \"incomplete_fields\": [],\n    \"extraction_notes\": null\n  }],\n  \"raw_text_extract\": \"Include if confidence is low\"\n}\n\nThis is for a sailboat galley - flag recipes requiring an oven (no_oven: false). If image is upside down, read it correctly. Return ONLY JSON.`,\n  messages: [{\n    role: 'user',\n    content: [\n      {\n        type: 'image',\n        source: {\n          type: 'base64',\n          media_type: mimeType,\n          data: base64Data\n        }\n      },\n      {\n        type: 'text',\n        text: `Extract all recipes from this image. Filename: ${filename}`\n      }\n    ]\n  }]\n};\n\nreturn {\n  json: {\n    apiRequest: requestBody,\n    filename: filename\n  }\n};"
+        },
+        "name": "Build Image Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          912,
+          400
+        ],
+        "id": "build-image-request"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.anthropic.com/v1/messages",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "anthropicApi",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "anthropic-version",
+                "value": "2023-06-01"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.apiRequest) }}",
+          "options": {
+            "batching": {
+              "batch": {
+                "batchSize": 1,
+                "batchInterval": 5000
+              }
+            }
+          }
+        },
+        "name": "Claude Extract PDF",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1152,
+          176
+        ],
+        "id": "claude-pdf",
+        "credentials": {
+          "anthropicApi": {
+            "id": "puODxN0KmeaC8Jan",
+            "name": "Anthropic account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.anthropic.com/v1/messages",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "anthropicApi",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "anthropic-version",
+                "value": "2023-06-01"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.apiRequest) }}",
+          "options": {
+            "batching": {
+              "batch": {
+                "batchSize": 1,
+                "batchInterval": 5000
+              }
+            }
+          }
+        },
+        "name": "Claude Extract Image",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1136,
+          400
+        ],
+        "id": "claude-image",
+        "credentials": {
+          "anthropicApi": {
+            "id": "puODxN0KmeaC8Jan",
+            "name": "Anthropic account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const claudeResponse = $json;\nconst filename = $('Parse Upload').item.json.filename;\nconst content = claudeResponse.content[0].text;\n\nlet recipeData;\ntry {\n  let cleanJson = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  recipeData = JSON.parse(cleanJson);\n} catch (e) {\n  recipeData = {\n    source_file: filename,\n    scanned_date: new Date().toISOString().split('T')[0],\n    processed_date: new Date().toISOString(),\n    processing_notes: 'Failed to parse Claude response: ' + e.message,\n    confidence: 'low',\n    recipes: [],\n    raw_text_extract: content\n  };\n}\n\nrecipeData.source_file = recipeData.source_file || filename;\nrecipeData.processed_date = recipeData.processed_date || new Date().toISOString();\nrecipeData.scanned_date = recipeData.scanned_date || new Date().toISOString().split('T')[0];\nrecipeData.filename = filename;\nrecipeData.source = 'local';\n\nreturn { json: recipeData };"
+        },
+        "name": "Parse Results",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1360,
+          304
+        ],
+        "id": "parse-results"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.confidence }}",
+                "rightValue": "low",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEquals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "name": "Check Confidence",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1584,
+          304
+        ],
+        "id": "check-confidence"
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "owner": {
+            "__rl": true,
+            "value": "dougkimmerly",
+            "mode": "list"
+          },
+          "repository": {
+            "__rl": true,
+            "value": "galley-meal-planner",
+            "mode": "list"
+          },
+          "filePath": "={{ 'pending-recipes/' + $now.format('yyyy-MM-dd') + '_' + $json.source_file.replace(/\\.[^/.]+$/, '') + '.json' }}",
+          "fileContent": "={{ JSON.stringify($json, null, 2) }}",
+          "commitMessage": "={{ 'Add local scan: ' + ($json.recipes[0]?.name || $json.source_file) }}"
+        },
+        "name": "Push to Pending",
+        "type": "n8n-nodes-base.github",
+        "typeVersion": 1,
+        "position": [
+          1792,
+          208
+        ],
+        "id": "push-pending",
+        "webhookId": "057ebafa-ca4c-471b-b36a-e9cf19d87a24",
+        "credentials": {
+          "githubApi": {
+            "id": "MUoEUR5IHYgyNoUf",
+            "name": "GitHub - Workflow Backup"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "owner": {
+            "__rl": true,
+            "value": "dougkimmerly",
+            "mode": "list"
+          },
+          "repository": {
+            "__rl": true,
+            "value": "galley-meal-planner",
+            "mode": "list"
+          },
+          "filePath": "={{ 'failed-recipes/' + $now.format('yyyy-MM-dd') + '_' + $json.source_file.replace(/\\.[^/.]+$/, '') + '.json' }}",
+          "fileContent": "={{ JSON.stringify($json, null, 2) }}",
+          "commitMessage": "={{ 'Add failed local scan: ' + $json.source_file }}"
+        },
+        "name": "Push to Failed",
+        "type": "n8n-nodes-base.github",
+        "typeVersion": 1,
+        "position": [
+          1792,
+          400
+        ],
+        "id": "push-failed",
+        "webhookId": "7bfbf7f8-097e-48d1-8526-71a1e648354e",
+        "credentials": {
+          "githubApi": {
+            "id": "MUoEUR5IHYgyNoUf",
+            "name": "GitHub - Workflow Backup"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Local Scan Webhook": {
+        "main": [
+          [
+            {
+              "node": "Parse Upload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Upload": {
+        "main": [
+          [
+            {
+              "node": "Is PDF?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Is PDF?": {
+        "main": [
+          [
+            {
+              "node": "Build PDF Request",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Image Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build PDF Request": {
+        "main": [
+          [
+            {
+              "node": "Claude Extract PDF",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Image Request": {
+        "main": [
+          [
+            {
+              "node": "Claude Extract Image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude Extract PDF": {
+        "main": [
+          [
+            {
+              "node": "Parse Results",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude Extract Image": {
+        "main": [
+          [
+            {
+              "node": "Parse Results",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Results": {
+        "main": [
+          [
+            {
+              "node": "Check Confidence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Confidence": {
+        "main": [
+          [
+            {
+              "node": "Push to Pending",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Push to Failed",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Douglas Kimmerly",
+    "name": "Version 54daac20",
+    "description": ""
+  },
+  "tags": []
+}

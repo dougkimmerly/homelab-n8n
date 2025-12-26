@@ -53,43 +53,21 @@ Update the "Current Workflows Inventory" section in CLAUDE.md with what you find
 
 ---
 
-## TASK-002 🔵 NEW (after TASK-001)
+## TASK-002 ✅ COMPLETE (Pre-existing)
 **Priority:** MEDIUM
 **Created:** 2025-12-26
-**Status:** NEW
+**Completed:** 2025-12-26 (already existed)
+**Status:** COMPLETE
 
 ### Description
-Create a GitHub Workflow Backup workflow that automatically exports all n8n workflows to this repo on a schedule.
-
-### Your Tasks
-
-**Part 1: Design the Workflow**
-
-Create a workflow that:
-1. Triggers on schedule (daily at 3 AM)
-2. Uses n8n API to list all workflows
-3. For each workflow, exports the JSON
-4. Commits changes to homelab-n8n repo
-5. Only commits if there are changes
-
-**Part 2: Build on CasaOS Instance**
-
-This should run on CasaOS since it's the production instance.
-
-**Part 3: Document**
-
-Create `workflows/docs/github-workflow-backup.md` with full documentation.
+GitHub Workflow Backup - automatically exports all n8n workflows to this repo on a schedule.
 
 ### Notes
-- Will need GitHub credential in n8n
-- Consider using the GitHub node or HTTP Request with PAT
-- Should backup its own workflow too!
+This workflow was already built and running before this project was created. Just needs to be:
+1. Documented in `workflows/docs/`
+2. JSON exported to `workflows/backup/casaos/`
 
-### Acceptance Criteria
-- [ ] Workflow created and active on CasaOS
-- [ ] Successfully backs up workflows to this repo
-- [ ] Documentation complete
-- [ ] JSON export of the backup workflow itself saved
+This will happen as part of TASK-001.
 
 ---
 

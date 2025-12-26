@@ -34,14 +34,21 @@ Inventoried and exported all 9 workflows from both n8n instances.
 ---
 
 ## TASK-002 Response
-**Status:** IN PROGRESS
+**Completed:** 2025-12-26
 
-### Issue
-Backup workflow paths are reversed:
-- CasaOS workflow pushing to `mac/` folder
-- Mac workflow pushing to `casaos/` folder
+### Summary
+Fixed reversed backup workflow paths. Both workflows now push to correct directories.
 
-### Fix Required
-Swap the paths in each workflow's "Process Workflows" node.
+### Changes Made
+1. CasaOS workflow: Changed path from `workflows/backup/mac/` → `workflows/backup/casaos/`
+2. Mac workflow: Changed path from `workflows/backup/casaos/` → `workflows/backup/mac/`
+3. Cleaned up 6 misplaced files from previous incorrect runs
+
+### Current State
+- **CasaOS folder:** 4 workflow backups (Galley Recipe Scanner, Galley Scanner Status, Music Library Nightly Maintenance, Workflow Backup to GitHub - CasaOS)
+- **Mac folder:** 5 workflow backups (Workflow Backup to GitHub - Mac, via check for new dates, via Get new dates Reverse, Check missing fares, via get fares reverse)
+
+### Verification
+Both workflows tested and confirmed pushing to correct folders.
 
 ---

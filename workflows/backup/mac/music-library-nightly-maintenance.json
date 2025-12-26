@@ -1,0 +1,1120 @@
+{
+  "updatedAt": "2025-12-19T22:34:35.751Z",
+  "createdAt": "2025-12-19T15:34:37.594Z",
+  "id": "wchLTqQ48tNI7bZk",
+  "name": "Music Library Nightly Maintenance",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "852f5a4e-8293-439e-a429-dc1902a7bb8a",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1008,
+        96
+      ],
+      "notes": "Runs every night at 2:00 AM"
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.20.16:3847/api/health",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "health-check-node",
+      "name": "API Health Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -784,
+        96
+      ],
+      "notes": "Verify API is reachable before starting maintenance"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.20.16:3847/api/actions/maintenance",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "lyricsLimit",
+              "value": 100
+            },
+            {
+              "name": "enrichLimit",
+              "value": 50
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "51784375-50f6-4bb8-b6a3-d1a6157daa3a",
+      "name": "Start Maintenance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -560,
+        96
+      ],
+      "notes": "Triggers maintenance endpoint with 30s timeout"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.error }}",
+              "operation": "exists"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "start-error-check",
+      "name": "Start Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        96
+      ],
+      "notes": "Check if Start Maintenance failed"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error_summary",
+              "name": "error_summary",
+              "value": "=Maintenance job failed to start: {{ $json.error || 'Unknown error' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-start-error",
+      "name": "Log Start Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -112,
+        16
+      ],
+      "notes": "Log error and stop workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "iteration_count",
+              "name": "iteration_count",
+              "value": "0",
+              "type": "number"
+            },
+            {
+              "id": "max_iterations",
+              "name": "max_iterations",
+              "value": "120",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "init-counter",
+      "name": "Initialize Counter",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -112,
+        208
+      ],
+      "notes": "Initialize polling counter (max 2 hours = 120 iterations)"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "1948f0e5-462e-4a5e-87f7-57cc56e4b841",
+      "name": "Wait 30s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        112,
+        208
+      ],
+      "webhookId": "f4f418d9-cc2a-4090-b82f-790b220312ab",
+      "notes": "Wait before first status check"
+    },
+    {
+      "parameters": {
+        "url": "=http://192.168.20.16:3847/api/jobs/{{ $json.jobId }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b5a00063-c272-402f-b052-0f96fcbc8f9b",
+      "name": "Check Job Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        336,
+        208
+      ],
+      "notes": "Polls job status with 30s timeout and 3 retries"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "full_job_data",
+              "name": "full_job_data",
+              "value": "={{ JSON.stringify($json) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "preserve-job-data",
+      "name": "Preserve Job Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        208
+      ],
+      "notes": "Store complete job response for final summary"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "combineOperation": "any"
+          },
+          "conditions": [
+            {
+              "id": "status_complete",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "complete",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "status_error",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "error",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "status_partial",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "partial",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "max_iterations_reached",
+              "leftValue": "={{ $json.iteration_count }}",
+              "rightValue": "={{ $json.max_iterations }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "efd4d0b9-24fc-4a17-9fcc-7ac55c01b6e3",
+      "name": "Job Done or Timeout?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [
+        784,
+        208
+      ],
+      "notes": "Exit if complete/error OR max 2 hours polling (120 iterations)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "iteration_count",
+              "name": "iteration_count",
+              "value": "={{ $json.iteration_count + 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "increment-counter",
+      "name": "Increment Counter",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        224
+      ],
+      "notes": "Increment iteration counter"
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "id": "372293d6-05dc-43b9-9fe8-dae770be82d8",
+      "name": "Wait 60s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1168,
+        224
+      ],
+      "webhookId": "9419e2b5-db9a-4e6e-bd4b-d4a680bbdb4d",
+      "notes": "Wait before next status check"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "scanNewTracks",
+              "name": "scanNewTracks",
+              "value": "={{ JSON.parse($json.full_job_data).result?.scanNewTracks || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "enrichedArtists",
+              "name": "enrichedArtists",
+              "value": "={{ JSON.parse($json.full_job_data).result?.enrichedArtists || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "taggedTracks",
+              "name": "taggedTracks",
+              "value": "={{ JSON.parse($json.full_job_data).result?.taggedTracks || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "lyricsFound",
+              "name": "lyricsFound",
+              "value": "={{ JSON.parse($json.full_job_data).result?.lyricsFound || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "duration",
+              "name": "duration",
+              "value": "={{ JSON.parse($json.full_job_data).duration || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "status",
+              "name": "status",
+              "value": "={{ JSON.parse($json.full_job_data).status || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "iterations",
+              "name": "iterations",
+              "value": "={{ $json.iteration_count || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "timedOut",
+              "name": "timedOut",
+              "value": "={{ $json.iteration_count >= $json.max_iterations }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c8286850-bef2-4ae3-890a-22397ad739b5",
+      "name": "Format Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        64
+      ],
+      "notes": "Extract metrics from preserved job data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "summary",
+              "name": "summary",
+              "value": "=Music Library Maintenance {{ $json.timedOut ? '⏱️ TIMED OUT' : 'Complete' }}\nDuration: {{ $json.duration }}s\nPolling iterations: {{ $json.iterations }}\n\n✅ Scan: {{ $json.scanNewTracks }} new tracks\n✅ Enrich: {{ $json.enrichedArtists }} artists\n✅ Tags: {{ $json.taggedTracks }} tracks tagged\n✅ Lyrics: {{ $json.lyricsFound }} found\n\nFinal Status: {{ $json.status }}{{ $json.timedOut ? ' (workflow stopped after 2 hours)' : '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a75a9ad1-3de3-4646-84ca-dd703c6e9d47",
+      "name": "Build Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1168,
+        64
+      ],
+      "notes": "Create summary with timeout indication"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        []
+      ]
+    },
+    "API Health Check": {
+      "main": [
+        [
+          {
+            "node": "Start Maintenance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Maintenance": {
+      "main": [
+        [
+          {
+            "node": "Start Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Failed?": {
+      "main": [
+        [
+          {
+            "node": "Log Start Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Initialize Counter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Counter": {
+      "main": [
+        [
+          {
+            "node": "Wait 30s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30s": {
+      "main": [
+        [
+          {
+            "node": "Check Job Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Job Status": {
+      "main": [
+        [
+          {
+            "node": "Preserve Job Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preserve Job Data": {
+      "main": [
+        [
+          {
+            "node": "Job Done or Timeout?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Done or Timeout?": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Increment Counter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Increment Counter": {
+      "main": [
+        [
+          {
+            "node": "Wait 60s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 60s": {
+      "main": [
+        [
+          {
+            "node": "Check Job Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Results": {
+      "main": [
+        [
+          {
+            "node": "Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "pinData": {},
+  "versionId": "930956db-bbd7-4efc-aaef-e9d4c9a64adf",
+  "activeVersionId": "930956db-bbd7-4efc-aaef-e9d4c9a64adf",
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2025-12-19T15:34:37.616Z",
+      "createdAt": "2025-12-19T15:34:37.616Z",
+      "role": "workflow:owner",
+      "workflowId": "wchLTqQ48tNI7bZk",
+      "projectId": "JPWSGHc23xq8qrMV"
+    }
+  ],
+  "activeVersion": {
+    "updatedAt": "2025-12-19T22:34:39.000Z",
+    "createdAt": "2025-12-19T22:34:35.758Z",
+    "versionId": "930956db-bbd7-4efc-aaef-e9d4c9a64adf",
+    "workflowId": "wchLTqQ48tNI7bZk",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 2 * * *"
+              }
+            ]
+          }
+        },
+        "id": "852f5a4e-8293-439e-a429-dc1902a7bb8a",
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          -1008,
+          96
+        ],
+        "notes": "Runs every night at 2:00 AM"
+      },
+      {
+        "parameters": {
+          "url": "http://192.168.20.16:3847/api/health",
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "health-check-node",
+        "name": "API Health Check",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -784,
+          96
+        ],
+        "notes": "Verify API is reachable before starting maintenance"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://192.168.20.16:3847/api/actions/maintenance",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "lyricsLimit",
+                "value": 100
+              },
+              {
+                "name": "enrichLimit",
+                "value": 50
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "51784375-50f6-4bb8-b6a3-d1a6157daa3a",
+        "name": "Start Maintenance",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -560,
+          96
+        ],
+        "notes": "Triggers maintenance endpoint with 30s timeout"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "string": [
+              {
+                "value1": "={{ $json.error }}",
+                "operation": "exists"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "start-error-check",
+        "name": "Start Failed?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -336,
+          96
+        ],
+        "notes": "Check if Start Maintenance failed"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "error_summary",
+                "name": "error_summary",
+                "value": "=Maintenance job failed to start: {{ $json.error || 'Unknown error' }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "log-start-error",
+        "name": "Log Start Error",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -112,
+          16
+        ],
+        "notes": "Log error and stop workflow"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "iteration_count",
+                "name": "iteration_count",
+                "value": "0",
+                "type": "number"
+              },
+              {
+                "id": "max_iterations",
+                "name": "max_iterations",
+                "value": "120",
+                "type": "number"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "options": {}
+        },
+        "id": "init-counter",
+        "name": "Initialize Counter",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -112,
+          208
+        ],
+        "notes": "Initialize polling counter (max 2 hours = 120 iterations)"
+      },
+      {
+        "parameters": {
+          "amount": 30
+        },
+        "id": "1948f0e5-462e-4a5e-87f7-57cc56e4b841",
+        "name": "Wait 30s",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          112,
+          208
+        ],
+        "webhookId": "f4f418d9-cc2a-4090-b82f-790b220312ab",
+        "notes": "Wait before first status check"
+      },
+      {
+        "parameters": {
+          "url": "=http://192.168.20.16:3847/api/jobs/{{ $json.jobId }}",
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "b5a00063-c272-402f-b052-0f96fcbc8f9b",
+        "name": "Check Job Status",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          336,
+          208
+        ],
+        "notes": "Polls job status with 30s timeout and 3 retries"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "full_job_data",
+                "name": "full_job_data",
+                "value": "={{ JSON.stringify($json) }}",
+                "type": "string"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "options": {}
+        },
+        "id": "preserve-job-data",
+        "name": "Preserve Job Data",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          560,
+          208
+        ],
+        "notes": "Store complete job response for final summary"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "combineOperation": "any"
+            },
+            "conditions": [
+              {
+                "id": "status_complete",
+                "leftValue": "={{ $json.status }}",
+                "rightValue": "complete",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              },
+              {
+                "id": "status_error",
+                "leftValue": "={{ $json.status }}",
+                "rightValue": "error",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              },
+              {
+                "id": "status_partial",
+                "leftValue": "={{ $json.status }}",
+                "rightValue": "partial",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              },
+              {
+                "id": "max_iterations_reached",
+                "leftValue": "={{ $json.iteration_count }}",
+                "rightValue": "={{ $json.max_iterations }}",
+                "operator": {
+                  "type": "number",
+                  "operation": "gte"
+                }
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "efd4d0b9-24fc-4a17-9fcc-7ac55c01b6e3",
+        "name": "Job Done or Timeout?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.1,
+        "position": [
+          784,
+          208
+        ],
+        "notes": "Exit if complete/error OR max 2 hours polling (120 iterations)"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "iteration_count",
+                "name": "iteration_count",
+                "value": "={{ $json.iteration_count + 1 }}",
+                "type": "number"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "options": {}
+        },
+        "id": "increment-counter",
+        "name": "Increment Counter",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          992,
+          224
+        ],
+        "notes": "Increment iteration counter"
+      },
+      {
+        "parameters": {
+          "amount": 60
+        },
+        "id": "372293d6-05dc-43b9-9fe8-dae770be82d8",
+        "name": "Wait 60s",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          1168,
+          224
+        ],
+        "webhookId": "9419e2b5-db9a-4e6e-bd4b-d4a680bbdb4d",
+        "notes": "Wait before next status check"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "scanNewTracks",
+                "name": "scanNewTracks",
+                "value": "={{ JSON.parse($json.full_job_data).result?.scanNewTracks || 0 }}",
+                "type": "number"
+              },
+              {
+                "id": "enrichedArtists",
+                "name": "enrichedArtists",
+                "value": "={{ JSON.parse($json.full_job_data).result?.enrichedArtists || 0 }}",
+                "type": "number"
+              },
+              {
+                "id": "taggedTracks",
+                "name": "taggedTracks",
+                "value": "={{ JSON.parse($json.full_job_data).result?.taggedTracks || 0 }}",
+                "type": "number"
+              },
+              {
+                "id": "lyricsFound",
+                "name": "lyricsFound",
+                "value": "={{ JSON.parse($json.full_job_data).result?.lyricsFound || 0 }}",
+                "type": "number"
+              },
+              {
+                "id": "duration",
+                "name": "duration",
+                "value": "={{ JSON.parse($json.full_job_data).duration || 0 }}",
+                "type": "number"
+              },
+              {
+                "id": "status",
+                "name": "status",
+                "value": "={{ JSON.parse($json.full_job_data).status || 'unknown' }}",
+                "type": "string"
+              },
+              {
+                "id": "iterations",
+                "name": "iterations",
+                "value": "={{ $json.iteration_count || 0 }}",
+                "type": "number"
+              },
+              {
+                "id": "timedOut",
+                "name": "timedOut",
+                "value": "={{ $json.iteration_count >= $json.max_iterations }}",
+                "type": "boolean"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "c8286850-bef2-4ae3-890a-22397ad739b5",
+        "name": "Format Results",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          992,
+          64
+        ],
+        "notes": "Extract metrics from preserved job data"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "summary",
+                "name": "summary",
+                "value": "=Music Library Maintenance {{ $json.timedOut ? '⏱️ TIMED OUT' : 'Complete' }}\nDuration: {{ $json.duration }}s\nPolling iterations: {{ $json.iterations }}\n\n✅ Scan: {{ $json.scanNewTracks }} new tracks\n✅ Enrich: {{ $json.enrichedArtists }} artists\n✅ Tags: {{ $json.taggedTracks }} tracks tagged\n✅ Lyrics: {{ $json.lyricsFound }} found\n\nFinal Status: {{ $json.status }}{{ $json.timedOut ? ' (workflow stopped after 2 hours)' : '' }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "a75a9ad1-3de3-4646-84ca-dd703c6e9d47",
+        "name": "Build Summary",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1168,
+          64
+        ],
+        "notes": "Create summary with timeout indication"
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          []
+        ]
+      },
+      "API Health Check": {
+        "main": [
+          [
+            {
+              "node": "Start Maintenance",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Start Maintenance": {
+        "main": [
+          [
+            {
+              "node": "Start Failed?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Start Failed?": {
+        "main": [
+          [
+            {
+              "node": "Log Start Error",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Initialize Counter",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Initialize Counter": {
+        "main": [
+          [
+            {
+              "node": "Wait 30s",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait 30s": {
+        "main": [
+          [
+            {
+              "node": "Check Job Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Job Status": {
+        "main": [
+          [
+            {
+              "node": "Preserve Job Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preserve Job Data": {
+        "main": [
+          [
+            {
+              "node": "Job Done or Timeout?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Job Done or Timeout?": {
+        "main": [
+          [
+            {
+              "node": "Format Results",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Increment Counter",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Increment Counter": {
+        "main": [
+          [
+            {
+              "node": "Wait 60s",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait 60s": {
+        "main": [
+          [
+            {
+              "node": "Check Job Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Results": {
+        "main": [
+          [
+            {
+              "node": "Build Summary",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Summary": {
+        "main": [
+          []
+        ]
+      }
+    },
+    "authors": "Douglas Kimmerly",
+    "name": "Version 930956db",
+    "description": ""
+  },
+  "tags": []
+}

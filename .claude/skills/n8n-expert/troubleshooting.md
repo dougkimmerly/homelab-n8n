@@ -153,7 +153,7 @@ MCP error 1003: unsupported media type application/x-www-form-urlencoded (Status
 **Cause:** The MCP server sends wrong Content-Type header for these endpoints.
 
 **Workaround:**
-- Activate/deactivate workflows manually in n8n UI
+- Activate workflows manually in n8n UI (called "Publish" in the UI)
 - Created workflows start inactive by default
 
 ### Working MCP Operations

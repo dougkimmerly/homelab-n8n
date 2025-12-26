@@ -26,11 +26,13 @@
 2. Wrong HTTP method (GET vs POST)
 3. Firewall/network blocking
 4. Wrong webhook path
+5. **New workflow not fully registered** (common after MCP create)
 
 **Fix:**
 - Verify workflow is active (green toggle)
 - Check webhook URL in node (Test vs Production URL)
 - Test with curl from same network
+- **For new workflows:** After first publish, make a small change (move a node), save, and publish again. Webhooks don't register until a save+publish cycle after initial creation.
 
 ### HTTP Request Failing
 

@@ -3,10 +3,11 @@
 <!-- PM writes tasks here. CC picks them up with msg -->
 <!-- Other projects can also add tasks here for n8n automation requests -->
 
-## TASK-001 🔵 NEW
+## TASK-001 ✅ COMPLETE
 **Priority:** HIGH
 **Created:** 2025-12-26
-**Status:** NEW
+**Status:** COMPLETE
+**Completed:** 2025-12-26
 
 ### Description
 Initial setup - inventory all existing workflows and export to this repo.

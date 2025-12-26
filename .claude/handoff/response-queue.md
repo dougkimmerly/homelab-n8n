@@ -2,63 +2,46 @@
 
 <!-- CC writes responses here. PM archives them after review -->
 
-## RESPONSE: TASK-001 🟡 BLOCKED
-**Date:** 2025-12-26
-**Status:** BLOCKED - Configuration Required
+## TASK-001 Response
+**Completed:** 2025-12-26
 
-### Issue
-The n8n MCP tools cannot access workflows. Both instances return 404 errors.
+### Summary
+Inventoried and exported all 9 workflows from both n8n instances.
 
-### Diagnosis
-Both n8n instances are running (healthz returns OK), but the **Public API** is not enabled:
+### CasaOS (4 workflows)
+- Galley Recipe Scanner
+- Workflow Backup to GitHub - CasaOS
+- Galley Scanner Status
+- Music Library Nightly Maintenance
 
-| Endpoint | Mac Result | CasaOS Result |
-|----------|------------|---------------|
-| `/healthz` | OK | OK |
-| `/rest/workflows` | 401 Unauthorized | 401 Unauthorized |
-| `/api/v1/workflows` | 404 not found | 404 not found |
+### Mac (5 workflows)
+- Workflow Backup to GitHub - Mac
+- via check for new dates
+- via Get new dates Reverse
+- Check missing fares
+- via get fares reverse
 
-The MCP tools use the Public API (`/api/v1/*`), which is disabled by default.
+### Deliverables
+- [x] JSON exports in `workflows/backup/casaos/` (4 files)
+- [x] JSON exports in `workflows/backup/mac/` (5 files)
+- [x] Documentation in `workflows/docs/` (5 doc files)
+- [x] CLAUDE.md inventory section updated
 
-### Action Required
-
-**For each n8n instance (Mac + CasaOS):**
-
-1. Open n8n web UI
-2. Go to **Settings** → **API**
-3. Toggle **Enable Public API** = ON
-4. Click **Create API Key** and save it
-5. Update the MCP server config with the new API key
-
-**MCP config location:** `~/.claude.json` or Claude Code settings
-
-Example MCP config:
-```json
-{
-  "mcpServers": {
-    "n8n-mac": {
-      "command": "npx",
-      "args": ["-y", "@leonardsellem/n8n-mcp-server"],
-      "env": {
-        "N8N_HOST": "http://localhost:5678",
-        "N8N_API_KEY": "<your-mac-api-key>"
-      }
-    },
-    "n8n-casaos": {
-      "command": "npx",
-      "args": ["-y", "@leonardsellem/n8n-mcp-server"],
-      "env": {
-        "N8N_HOST": "http://192.168.20.19:5678",
-        "N8N_API_KEY": "<your-casaos-api-key>"
-      }
-    }
-  }
-}
-```
-
-### Next Steps
-Once configured, reply with `msg` and I'll continue with the inventory task.
+### Notes
+- All workflows are currently Active
+- Existing backup workflows modified to target this repo
 
 ---
 
-*No other pending responses*
+## TASK-002 Response
+**Status:** IN PROGRESS
+
+### Issue
+Backup workflow paths are reversed:
+- CasaOS workflow pushing to `mac/` folder
+- Mac workflow pushing to `casaos/` folder
+
+### Fix Required
+Swap the paths in each workflow's "Process Workflows" node.
+
+---

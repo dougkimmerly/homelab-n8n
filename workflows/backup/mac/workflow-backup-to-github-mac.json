@@ -1,0 +1,76 @@
+{
+  "id": "CwwTOGY3Hrf7pES1",
+  "name": "Workflow Backup to GitHub - Mac",
+  "active": true,
+  "createdAt": "2025-12-17T19:34:52.517Z",
+  "updatedAt": "2025-12-18T22:16:57.526Z",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [192, 304]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/api/v1/workflows?limit=250",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "n8nApi",
+        "options": {}
+      },
+      "id": "get-all-workflows",
+      "name": "Get All Workflows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [352, 304],
+      "credentials": { "n8nApi": { "name": "n8n API Local" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the workflows from the HTTP response\nconst response = $input.first();\n\nlet workflows = [];\nif (response.body?.data?.data) {\n  workflows = response.body.data.data;\n} else if (response.body?.data) {\n  workflows = response.body.data;\n} else if (response.json?.data) {\n  workflows = response.json.data;\n} else if (response.data) {\n  workflows = response.data;\n} else if (Array.isArray(response)) {\n  workflows = response;\n}\n\nconst timestamp = new Date().toISOString().split('T')[0];\nconst results = [];\n\nfor (const workflow of workflows) {\n  if (workflow.name === 'Workflow Backup to GitHub') {\n    continue;\n  }\n  \n  const safeName = workflow.name\n    .toLowerCase()\n    .replace(/[^a-z0-9]+/g, '-')\n    .replace(/^-|-$/g, '');\n  \n  const cleanWorkflow = {\n    ...workflow,\n    nodes: workflow.nodes?.map(node => {\n      const cleanNode = { ...node };\n      if (cleanNode.credentials) {\n        Object.keys(cleanNode.credentials).forEach(key => {\n          if (cleanNode.credentials[key]) {\n            cleanNode.credentials[key] = {\n              name: cleanNode.credentials[key].name\n            };\n          }\n        });\n      }\n      return cleanNode;\n    })\n  };\n  \n  const contentStr = JSON.stringify(cleanWorkflow, null, 2);\n  const contentBase64 = Buffer.from(contentStr).toString('base64');\n  \n  results.push({\n    json: {\n      filename: `workflows/${safeName}.json`,\n      content: contentBase64,\n      workflowName: workflow.name,\n      workflowId: workflow.id,\n      active: workflow.active\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "process-workflows",
+      "name": "Process Workflows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [528, 304]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/dougkimmerly/homelab-n8n-workflows/contents/{{ $json.filename }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $json.workflowName }} - {{ $now.format('yyyy-MM-dd HH:mm') }}\",\n  \"content\": \"{{ $json.content }}\",\n  \"branch\": \"main\"\n}",
+        "options": { "response": { "response": { "fullResponse": true, "neverError": true } } }
+      },
+      "id": "upload-to-github",
+      "name": "Upload to GitHub",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [688, 304],
+      "credentials": { "githubApi": { "name": "GitHub account" } }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": { "main": [[{ "node": "Get All Workflows", "type": "main", "index": 0 }]] },
+    "Get All Workflows": { "main": [[{ "node": "Process Workflows", "type": "main", "index": 0 }]] },
+    "Process Workflows": { "main": [[{ "node": "Upload to GitHub", "type": "main", "index": 0 }]] },
+    "Upload to GitHub": { "main": [[{ "node": "File Exists?", "type": "main", "index": 0 }]] },
+    "File Exists?": { "main": [[{ "node": "Get File SHA", "type": "main", "index": 0 }], [{ "node": "Create Summary", "type": "main", "index": 0 }]] },
+    "Get File SHA": { "main": [[{ "node": "Merge File SHA Data", "type": "main", "index": 0 }]] },
+    "Merge File SHA Data": { "main": [[{ "node": "Update Existing File", "type": "main", "index": 0 }]] },
+    "Update Existing File": { "main": [[{ "node": "Create Summary", "type": "main", "index": 0 }]] },
+    "Create Summary": { "main": [[{ "node": "Get README SHA", "type": "main", "index": 0 }]] },
+    "Get README SHA": { "main": [[{ "node": "Merge README Data", "type": "main", "index": 0 }]] },
+    "Merge README Data": { "main": [[{ "node": "Update README", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "triggerCount": 1
+}

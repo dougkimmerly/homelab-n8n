@@ -1,0 +1,58 @@
+{
+  "id": "tD5VTVQucObZIGoF",
+  "name": "via get fares reverse",
+  "active": true,
+  "createdAt": "2025-12-07T23:44:08.549Z",
+  "updatedAt": "2025-12-07T23:44:25.000Z",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "triggerAtHour": 8 },
+            { "triggerAtHour": 10, "triggerAtMinute": 45 },
+            { "triggerAtHour": 13, "triggerAtMinute": 30 },
+            { "triggerAtHour": 15, "triggerAtMinute": 30 }
+          ]
+        }
+      },
+      "id": "b16c2693-9347-4aa2-8e36-39ea81084ca5",
+      "name": "4x Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [460, 460]
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * 45) }}",
+        "unit": "minutes"
+      },
+      "id": "19391d33-a902-4e45-8b50-278e1fb3ef37",
+      "name": "Random Delay (0-45min)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [680, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5001/api/run-command",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"command\": \"check-missing\",\n  \"args\": [\"--limit\", \"8\", \"--direction\", \"vt\"]\n}",
+        "options": {}
+      },
+      "id": "6c142dad-ea24-45de-b10b-4f7a8395e0ff",
+      "name": "Check Missing Fares (VT)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 460]
+    }
+  ],
+  "connections": {
+    "4x Daily": { "main": [[{ "node": "Random Delay (0-45min)", "type": "main", "index": 0 }]] },
+    "Random Delay (0-45min)": { "main": [[{ "node": "Check Missing Fares (VT)", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "triggerCount": 1
+}

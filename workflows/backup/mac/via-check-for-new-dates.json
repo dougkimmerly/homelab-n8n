@@ -1,0 +1,39 @@
+{
+  "id": "fteteEsP5V6khd2X",
+  "name": "via check for new dates",
+  "active": true,
+  "createdAt": "2025-12-07T22:41:16.922Z",
+  "updatedAt": "2025-12-07T23:29:12.000Z",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "triggerAtHour": 7 }] }
+      },
+      "id": "3bae7078-f5b7-489e-9131-fee52c5cd2e3",
+      "name": "Daily 7am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [460, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5001/api/run-command",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"command\": \"calendar\",\n  \"args\": [\"--from-latest\"]\n}",
+        "options": {}
+      },
+      "id": "5666e20e-694d-4c99-9da6-5fa5c819f434",
+      "name": "Run Calendar Scan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 460]
+    }
+  ],
+  "connections": {
+    "Daily 7am": { "main": [[{ "node": "Run Calendar Scan", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "triggerCount": 1
+}

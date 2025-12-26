@@ -1,0 +1,58 @@
+{
+  "id": "Yii7AvSUQt4bkCwE",
+  "name": "Check missing fares",
+  "active": true,
+  "createdAt": "2025-12-07T23:34:35.531Z",
+  "updatedAt": "2025-12-07T23:34:50.000Z",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "triggerAtHour": 7, "triggerAtMinute": 30 },
+            { "triggerAtHour": 10, "triggerAtMinute": 15 },
+            { "triggerAtHour": 13 },
+            { "triggerAtHour": 15 }
+          ]
+        }
+      },
+      "id": "6aa6c5c2-91aa-4077-b535-4600ca04e35e",
+      "name": "4x Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [460, 460]
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * 45) }}",
+        "unit": "minutes"
+      },
+      "id": "46c984c6-697f-48db-8186-27bba8b09884",
+      "name": "Random Delay (0-45min)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [680, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5001/api/run-command",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"command\": \"check-missing\",\n  \"args\": [\"--limit\", \"8\"]\n}",
+        "options": {}
+      },
+      "id": "5598fb8f-889a-4ea5-b06a-1c50045fb4a1",
+      "name": "Check Missing Fares",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 460]
+    }
+  ],
+  "connections": {
+    "4x Daily": { "main": [[{ "node": "Random Delay (0-45min)", "type": "main", "index": 0 }]] },
+    "Random Delay (0-45min)": { "main": [[{ "node": "Check Missing Fares", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "triggerCount": 1
+}

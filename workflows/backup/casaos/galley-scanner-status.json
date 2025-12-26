@@ -1,0 +1,68 @@
+{
+  "id": "v8Ecqgjmv15tlmoR",
+  "name": "Galley Scanner Status",
+  "active": true,
+  "createdAt": "2025-12-21T01:16:09.065Z",
+  "updatedAt": "2025-12-21T01:48:01.390Z",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "scanner-status",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "galley webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [256, 304],
+      "webhookId": "0231F55F-CE6B-4341-A8B2-504BADE830C5",
+      "id": "b1c95c8e-8ad3-4c06-b73d-2b3f6b46f328"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "'1GfSx6VyB9FqFkmpjX2-wB2q-sptbxbf3' in parents and trashed = false and mimeType != 'application/vnd.google-apps.folder'",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "name": "List Files",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [480, 272],
+      "id": "0e9a5a58-c009-4925-94e8-123255fef6df",
+      "credentials": { "googleApi": { "name": "Google Service Account account" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all(); return [{ json: { count: items.length, files: items.map(i => i.json.name) } }];"
+      },
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [704, 304],
+      "id": "7c8183a7-7393-4be9-9ee7-f8320c0ae8ff"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 304],
+      "id": "93da2e7b-bc85-42c0-aba6-c5613b973b57"
+    }
+  ],
+  "connections": {
+    "galley webhook": { "main": [[{ "node": "List Files", "type": "main", "index": 0 }]] },
+    "List Files": { "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]] },
+    "Format Response": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "triggerCount": 1
+}

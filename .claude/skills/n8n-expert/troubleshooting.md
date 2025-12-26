@@ -65,6 +65,26 @@
 - Use `$('Node Name').item.json.property` for other nodes
 - **For complex JSON:** Use a Code node to build the object, then `JSON.stringify($json.apiRequest)` in HTTP Request
 
+### Base64 Data Issues
+
+**Symptoms:** API rejects base64 data as invalid (e.g., Claude API "Invalid base64 data")
+
+**Causes:**
+1. Data URL prefix included (e.g., `data:application/pdf;base64,`)
+2. Whitespace or newlines in base64 string
+3. Truncated or corrupted data
+
+**Fix:**
+```javascript
+// Strip data URL prefix if present
+if (base64Data.includes(',')) {
+  base64Data = base64Data.split(',')[1];
+}
+
+// Remove any whitespace/newlines
+base64Data = base64Data.replace(/\s/g, '');
+```
+
 ### Credential Issues
 
 **Symptoms:** "Credentials not found" or auth failures

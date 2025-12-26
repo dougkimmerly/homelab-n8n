@@ -56,12 +56,14 @@
 1. Wrong path to data
 2. Data doesn't exist yet (node hasn't run)
 3. Typo in property name
+4. Complex nested JSON with quotes breaks parser
 
 **Fix:**
 - Use expression editor to browse available data
 - Check previous node output
 - Use `$json.property` for current item
 - Use `$('Node Name').item.json.property` for other nodes
+- **For complex JSON:** Use a Code node to build the object, then `JSON.stringify($json.apiRequest)` in HTTP Request
 
 ### Credential Issues
 

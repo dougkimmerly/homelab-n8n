@@ -50,13 +50,15 @@ If no tasks for this repo: Report "No pending tasks for [homelab-n8n]." and stop
    cd ~/dkSRC/infrastructure/homelab && git add . && git commit -m "RESPONSE-XXX [homelab-n8n]" && git push && cd -
    ```
 
-## Step 5: Final confirmation (REQUIRED)
+## Step 5: Final confirmation (REQUIRED - ABSOLUTE LAST LINE!)
 
-After ALL tasks are complete and pushed, your LAST line of output MUST be:
+⚠️ **This MUST be the very last line you output. Nothing after it!**
 
 ```
 ✅ RESPONSE-XXX pushed to hub. Ready for PM to review with /resp
 ```
+
+**Why:** PM may have multiple CC sessions running. This line lets them see at a glance which ones are done. Any text after this defeats the purpose.
 
 ---
 
@@ -89,4 +91,4 @@ Any issues, blockers, or follow-up needed.
 - **Never ask permission** - just execute the tasks
 - **Process in priority order** - critical first, then by task number
 - **Always push both repos** - your changes AND the hub updates
-- **Always end with confirmation** - PM needs to know response is ready
+- **Final line is FINAL** - no summary after the ✅ confirmation

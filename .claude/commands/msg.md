@@ -38,8 +38,11 @@ If no tasks for this repo: Report "No pending tasks for [homelab-n8n]." and stop
 
 1. **DO THE WORK** - Complete the task requirements in this repo
 2. **Commit changes** to this repo
-3. **Archive the task** - Prepend to `homelab/.claude/hub/task-archive.md` with timestamp
-4. **Remove from queue** - Delete task from `homelab/.claude/hub/task-queue.md`
+3. **Archive the task** - Prepend YOUR task to `homelab/.claude/hub/task-archive.md` with timestamp
+4. **Remove YOUR task from queue** - Delete ONLY the task you completed from `task-queue.md`
+   
+   ⚠️ **CRITICAL: Only remove YOUR task tagged `[homelab-n8n]`. DO NOT remove or modify tasks tagged for other repos!** Other CC instances need their tasks.
+
 5. **Write response** - Prepend to `homelab/.claude/hub/response-queue.md` (format below)
 6. **Push this repo:**
    ```bash
@@ -90,5 +93,6 @@ Any issues, blockers, or follow-up needed.
 
 - **Never ask permission** - just execute the tasks
 - **Process in priority order** - critical first, then by task number
+- **Only remove YOUR tasks** - leave other repos' tasks alone!
 - **Always push both repos** - your changes AND the hub updates
 - **Final line is FINAL** - no summary after the ✅ confirmation

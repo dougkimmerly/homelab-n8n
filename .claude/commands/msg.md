@@ -2,7 +2,7 @@
 
 **This repo:** `homelab-n8n`  
 **Tag to filter:** `[homelab-n8n]`  
-**Hub:** `~/dkSRC/infrastructure/homelab/.claude/hub/`
+**Hub:** `~/Programming/dkSRC/infrastructure/homelab/.claude/hub/`
 
 ---
 
@@ -15,13 +15,13 @@ When user says "msg", "check messages", or "any tasks?" - follow this protocol c
 ## Step 1: Pull the central hub
 
 ```bash
-cd ~/dkSRC/infrastructure/homelab && git pull && cd -
+cd ~/Programming/dkSRC/infrastructure/homelab && git pull && cd -
 ```
 
 ## Step 2: Read task queue and filter for this repo
 
 ```bash
-cat ~/dkSRC/infrastructure/homelab/.claude/hub/task-queue.md
+cat ~/Programming/dkSRC/infrastructure/homelab/.claude/hub/task-queue.md
 ```
 
 - Only pick up tasks tagged `[homelab-n8n]`
@@ -47,7 +47,7 @@ If no tasks for this repo: Report "No pending tasks for [homelab-n8n]." and stop
    ```
 7. **Push hub updates:**
    ```bash
-   cd ~/dkSRC/infrastructure/homelab && git add . && git commit -m "RESPONSE-XXX [homelab-n8n]" && git push && cd -
+   cd ~/Programming/dkSRC/infrastructure/homelab && git add . && git commit -m "RESPONSE-XXX [homelab-n8n]" && git push && cd -
    ```
 
 ## Step 5: Final confirmation (REQUIRED - ABSOLUTE LAST LINE!)

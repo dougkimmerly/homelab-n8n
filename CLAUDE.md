@@ -6,6 +6,27 @@
 
 ---
 
+## 🎛️ Central Message Hub
+
+**This repo uses the central hub in `homelab` for PM↔CC coordination.**
+
+| Location | Purpose |
+|----------|---------|
+| `homelab/.claude/hub/task-queue.md` | Tasks tagged `[homelab-n8n]` |
+| `homelab/.claude/hub/response-queue.md` | Responses tagged `[homelab-n8n]` |
+
+### CC Workflow
+```bash
+cd ~/homelab-n8n
+claude
+# Run: /msg homelab-n8n
+# This fetches [homelab-n8n] tasks from central hub
+```
+
+See `homelab/.claude/hub/README.md` for full protocol.
+
+---
+
 ## Your Identity
 
 You are the **n8n Specialist PM** for Doug's homelab. Your job is to design, build, debug, and document n8n workflows that automate the homelab infrastructure. You are the expert that other projects call on when they need automation.
@@ -30,30 +51,18 @@ Your expertise lives in these skill files. **Read them at session start** and **
 
 ---
 
-## PM Session Protocol
-
-**Session Start:**
-1. Fetch this CLAUDE.md using `github:get_file_contents`
-2. Check `.claude/handoff/response-queue.md` for CC responses
-3. Check `.claude/handoff/task-queue.md` for pending tasks (including cross-project requests)
-4. Use GitHub MCP tools for all file operations
-
-**Critical:** Use GitHub MCP tools - never edit `/mnt/project/` files (read-only)
-
----
-
 ## n8n Instances
 
 | Instance | Host | Port | Purpose | API Base |
 |----------|------|------|---------|----------|
-| **CasaOS** | 192.168.20.19 | 5678 | Primary production workflows | http://192.168.20.19:5678/api/v1 |
+| **Docker Server** | 192.168.20.19 | 5678 | Primary production workflows | http://192.168.20.19:5678/api/v1 |
 | **Mac** | localhost | 5678 | Development, testing, local automation | http://localhost:5678/api/v1 |
 | **Synology** | 192.168.20.16 | 5679 | Backup/secondary (if needed) | http://192.168.20.16:5679/api/v1 |
 
 ## MCP Access
 
 You have MCP tools for n8n:
-- `n8n-casaos:*` - CasaOS instance operations
+- `n8n-casaos:*` - Docker Server instance operations (name retained for compatibility)
 - `n8n-mac:*` - Mac instance operations
 
 Key operations:
@@ -67,24 +76,6 @@ deactivate_workflow - Disable workflow
 list_executions     - See run history
 get_execution       - Debug specific run
 ```
-
----
-
-## Cross-Project Task Requests
-
-Other homelab projects may request n8n workflows. These appear in `task-queue.md` with:
-```markdown
-## TASK-XXX NEW (from project PM)
-**Requesting Project:** project-name
-**GitHub Issue:** link if applicable
-```
-
-When completing cross-project tasks:
-1. Build and test the workflow
-2. Document it in `workflows/docs/`
-3. Export JSON to `workflows/backup/`
-4. Respond in `response-queue.md`
-5. Update the requesting project's issue if provided
 
 ---
 
@@ -146,11 +137,6 @@ homelab-n8n/
 ├── CLAUDE.md                 # This file
 ├── README.md                 # Public documentation
 ├── .claude/
-│   ├── handoff/
-│   │   ├── task-queue.md     # Tasks from PM and other projects
-│   │   ├── response-queue.md # CC responses
-│   │   ├── task-archive.md
-│   │   └── response-archive.md
 │   └── skills/
 │       └── n8n-expert/
 │           ├── SKILL.md      # Deep n8n knowledge
@@ -158,7 +144,7 @@ homelab-n8n/
 │           └── troubleshooting.md
 ├── workflows/
 │   ├── backup/
-│   │   ├── casaos/           # JSON exports from CasaOS
+│   │   ├── docker-server/    # JSON exports from Docker Server
 │   │   └── mac/              # JSON exports from Mac
 │   ├── templates/            # Reusable workflow patterns
 │   └── docs/                 # Per-workflow documentation
@@ -173,7 +159,7 @@ homelab-n8n/
 |---------|------|-------------|
 | Homelab Infra | homelab | Health monitoring, backup workflows |
 | Synology Services | homelab-synology | Container management workflows |
-| CasaOS Services | homelab-casaos | Service automation |
+| Docker Server Services | homelab-docker-server | Service automation |
 | Galley Meal Planner | galley-meal-planner | Data sync, notifications |
 
 ---
@@ -182,7 +168,7 @@ homelab-n8n/
 
 *Last updated: 2025-12-26*
 
-### CasaOS Instance (5 workflows)
+### Docker Server Instance (5 workflows)
 
 | Workflow | ID | Status | Trigger | Purpose |
 |----------|-----|--------|---------|---------|

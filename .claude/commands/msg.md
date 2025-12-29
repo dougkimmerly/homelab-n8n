@@ -2,7 +2,7 @@
 
 **This repo:** `homelab-n8n`  
 **Tag to filter:** `[homelab-n8n]`  
-**Hub:** `~/Programming/dkSRC/infrastructure/homelab/.claude/hub/`
+**Hub:** `~/dkSRC/infrastructure/homelab/.claude/hub/`
 
 ---
 
@@ -15,13 +15,13 @@ When user says "msg", "check messages", or "any tasks?" - follow this protocol c
 ## Step 1: Pull the central hub
 
 ```bash
-cd ~/Programming/dkSRC/infrastructure/homelab && git pull && cd -
+cd ~/dkSRC/infrastructure/homelab && git pull && cd -
 ```
 
 ## Step 2: Read task queue and filter for this repo
 
 ```bash
-cat ~/Programming/dkSRC/infrastructure/homelab/.claude/hub/task-queue.md
+cat ~/dkSRC/infrastructure/homelab/.claude/hub/task-queue.md
 ```
 
 - Only pick up tasks tagged `[homelab-n8n]`
@@ -32,7 +32,7 @@ cat ~/Programming/dkSRC/infrastructure/homelab/.claude/hub/task-queue.md
 **Priority order:** critical → high → normal → low  
 **Within same priority:** lowest task number first (TASK-001 before TASK-002)
 
-If no tasks for this repo: Report "No pending tasks for [homelab-n8n]." and stop.
+If no tasks for this repo: Report "No pending tasks for [homelab-n8n]. Queue empty." and stop.
 
 ## Step 4: For EACH task - Execute immediately (don't ask!)
 
@@ -50,18 +50,35 @@ If no tasks for this repo: Report "No pending tasks for [homelab-n8n]." and stop
    ```
 7. **Push hub updates:**
    ```bash
-   cd ~/Programming/dkSRC/infrastructure/homelab && git add . && git commit -m "RESPONSE-XXX [homelab-n8n]" && git push && cd -
+   cd ~/dkSRC/infrastructure/homelab && git add . && git commit -m "RESPONSE-XXX [homelab-n8n]" && git push && cd -
    ```
 
-## Step 5: Final confirmation (REQUIRED - ABSOLUTE LAST LINE!)
+## Step 5: LOOP - Check for more tasks! 🔄
+
+⚠️ **CRITICAL: After completing a task, ALWAYS check for more tasks!**
+
+```bash
+cd ~/dkSRC/infrastructure/homelab && git pull && cd -
+cat ~/dkSRC/infrastructure/homelab/.claude/hub/task-queue.md
+```
+
+- If there are MORE tasks tagged `[homelab-n8n]` → **Go back to Step 4 and do the next task**
+- If NO more tasks for this repo → Continue to Step 6
+
+**Keep looping until the queue is empty for your tag!**
+
+## Step 6: Final confirmation (REQUIRED - ABSOLUTE LAST LINE!)
 
 ⚠️ **This MUST be the very last line you output. Nothing after it!**
 
 ```
-✅ RESPONSE-XXX pushed to hub. Ready for PM to review with /resp
+✅ RESPONSE-XXX pushed to hub. Queue empty for [homelab-n8n]. Ready for PM review.
 ```
 
-**Why:** PM may have multiple CC sessions running. This line lets them see at a glance which ones are done. Any text after this defeats the purpose.
+If multiple tasks completed:
+```
+✅ RESPONSE-XXX, RESPONSE-YYY pushed to hub. Queue empty for [homelab-n8n]. Ready for PM review.
+```
 
 ---
 
@@ -93,6 +110,7 @@ Any issues, blockers, or follow-up needed.
 
 - **Never ask permission** - just execute the tasks
 - **Process in priority order** - critical first, then by task number
+- **ALWAYS LOOP** - after each task, check for more and continue until queue is empty
 - **Only remove YOUR tasks** - leave other repos' tasks alone!
 - **Always push both repos** - your changes AND the hub updates
 - **Final line is FINAL** - no summary after the ✅ confirmation

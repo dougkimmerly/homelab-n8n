@@ -1,0 +1,18 @@
+{
+  "entity_id": "CC-n8n",
+  "repo": "dougkimmerly/homelab-n8n",
+  "domain_keywords": [
+    "n8n",
+    "workflow",
+    "automation",
+    "webhook",
+    "integration",
+    "node",
+    "api",
+    "orchestration",
+    "etl",
+    "data-sync"
+  ],
+  "capabilities": "n8n workflow automation specialist - designs and manages workflows across homelab infrastructure for monitoring, backups, data sync, and integrations",
+  "handoff_path": ".claude/handoff/"
+}

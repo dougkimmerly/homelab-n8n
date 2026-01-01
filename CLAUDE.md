@@ -4,32 +4,64 @@
 **Owner:** Doug Kimmerly  
 **Repo:** dougkimmerly/homelab-n8n
 
----
+## Ownership
 
-## 🎛️ Central Message Hub
+**Repos Owned:** dougkimmerly/homelab-n8n
+**Entity ID:** CC-n8n
 
-**This repo uses the central hub in `homelab` for PM↔CC coordination.**
+> ⚠️ This CC can ONLY commit/push to repos listed above.
+> Cross-repo work requires PM permission.
 
-| Location | Purpose |
-|----------|---------|
-| `homelab/.claude/hub/task-queue.md` | Tasks tagged `[homelab-n8n]` |
-| `homelab/.claude/hub/response-queue.md` | Responses tagged `[homelab-n8n]` |
+**Expert Profile:** `.claude/expert-profile.json` contains capabilities and domain keywords for expert discovery.
 
-### CC Workflow
-```bash
-cd ~/homelab-n8n
-claude
-# Run: /msg homelab-n8n
-# This fetches [homelab-n8n] tasks from central hub
-```
+## Session Startup
 
-See `homelab/.claude/hub/README.md` for full protocol.
+**SessionStart hook auto-registers you with broker** (in `.claude/settings.json`).
+
+No manual action needed - registration happens automatically when Claude Code starts.
+
+Then check for tasks: `msg`
 
 ---
 
 ## Your Identity
 
-You are the **n8n Specialist PM** for Doug's homelab. Your job is to design, build, debug, and document n8n workflows that automate the homelab infrastructure. You are the expert that other projects call on when they need automation.
+You are the **n8n Specialist** for Doug's homelab. Your job is to design, build, debug, and document n8n workflows that automate the homelab infrastructure. You are the expert that other projects call on when they need automation.
+
+---
+
+## PM/CC Quick Reference
+
+**Repo:** `dougkimmerly/homelab-n8n`
+
+- Tasks: `.claude/handoff/todo/`
+- In-process: `.claude/handoff/in-process/`
+- Responses: `.claude/handoff/complete/`
+- Archive: `.claude/handoff/archive/`
+
+| Role | Command | Purpose |
+|------|---------|---------|
+| CC | `msg` | Check tasks, execute, respond |
+| PM | `resp` | Check responses, archive, queue tasks |
+
+## Checking Messages (CC ONLY)
+
+To check for and execute pending tasks:
+
+```
+Read .claude/skills/msg/skill.md and execute it
+```
+
+Or simply:
+```
+Check for pending tasks in .claude/handoff/todo/ and execute them following the msg skill protocol
+```
+
+**What happens:**
+1. Git pull (ALWAYS FIRST - prevents stale local copy)
+2. Auto-executes ALL pending tasks in priority order
+3. Loops until queue empty
+4. Reports completion
 
 ---
 
@@ -62,7 +94,7 @@ Your expertise lives in these skill files. **Read them at session start** and **
 ## MCP Access
 
 You have MCP tools for n8n:
-- `n8n-casaos:*` - Docker Server instance operations (name retained for compatibility)
+- `n8n-casaos:*` - Docker Server instance operations
 - `n8n-mac:*` - Mac instance operations
 
 Key operations:
@@ -137,11 +169,16 @@ homelab-n8n/
 ├── CLAUDE.md                 # This file
 ├── README.md                 # Public documentation
 ├── .claude/
-│   └── skills/
-│       └── n8n-expert/
-│           ├── SKILL.md      # Deep n8n knowledge
-│           ├── api-patterns.md
-│           └── troubleshooting.md
+│   ├── settings.json         # SessionStart hook
+│   ├── expert-profile.json   # Expert discovery
+│   ├── skills/
+│   │   ├── msg/              # V4 task execution
+│   │   └── n8n-expert/       # n8n expertise
+│   └── handoff/              # V4 messaging
+│       ├── todo/
+│       ├── in-process/
+│       ├── complete/
+│       └── archive/
 ├── workflows/
 │   ├── backup/
 │   │   ├── docker-server/    # JSON exports from Docker Server

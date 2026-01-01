@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST \"${BROKER_URL:-http://localhost:9500}/api/sessions/CC-n8n/connect\" -H \"Content-Type: application/json\" -d \"{\\\"directory\\\":\\\"$(pwd)\\\",\\\"pid\\\":$$,\\\"repo\\\":\\\"dougkimmerly/homelab-n8n\\\"}\""
+          }
+        ]
+      }
+    ]
+  }
+}

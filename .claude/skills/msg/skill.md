@@ -9,206 +9,293 @@ triggers:
 location: project
 ---
 
-# Message Queue Auto-Execute (v3)
+# msg - Process Tasks
 
-## Invocation
+**FULLY AUTONOMOUS - NO CONFIRMATIONS**
 
-This skill is invoked manually. Type one of:
-- `msg`
-- `check messages`
-- `Read .claude/skills/msg/skill.md and execute it`
+## Quick Reference
 
-Note: The UserPromptSubmit hook is disabled due to Claude Code bugs.
+| Location | Purpose |
+|----------|---------|
+| `.claude/handoff/inbox/` | Tasks FOR YOU arrive here |
+| `.claude/handoff/in-process/` | Currently working on |
+| `.claude/handoff/complete/` | Done - put responses here |
 
----
+## CRITICAL: Where Files Go
 
-**CRITICAL: This is FULLY AUTONOMOUS - NO CONFIRMATIONS**
-
-Execute ALL pending tasks in priority order until queue is empty.
-
-## V4 File Naming Rules
-
-**Valid file prefixes for `.claude/handoff/todo/`:**
-
-| Prefix | Usage | Example |
-|--------|-------|---------|
-| `TASK-` | Tasks from PM or broker | `TASK-2081.md` |
-| `CC2CC-` | CC-to-CC messages | `CC2CC-framework-n8n-2081.md` |
-| `REPORT-` | Reports/responses from other CCs | `REPORT-framework-2081.md` |
-
-**NO OTHER PREFIXES are valid.** Do not invent new prefixes based on task descriptions.
-
-**CC2CC naming convention:**
 ```
-CC2CC-{sender}-{recipient}-{identifier}.md
+RECEIVING tasks:      Check YOUR repo's inbox/
+SENDING to a CC:      Write to THEIR repo's inbox/
+RESPONDING to CC2CC:  Write REPORT to SENDER's inbox/
 ```
 
-## Execution Steps
+**The pattern is always: write to the RECIPIENT's inbox, not your own!**
 
-### 1. Connect to Broker (Optional)
-
-Register with broker and set status to active:
-
+**Example - CC-dashboard wants to send task to CC-brain:**
 ```bash
-BROKER_URL="${BROKER_URL:-http://localhost:9500}"
-ENTITY_ID="CC-n8n"
-REPO=$(git remote get-url origin 2>/dev/null | sed -e 's#.*github.com[:/]##' -e 's#\.git$##')
+# WRONG - putting in your own inbox
+/homelab-dashboard/.claude/handoff/inbox/CC2CC-brain-xxx.md  # NO!
 
-curl -s -X POST "${BROKER_URL}/api/sessions/${ENTITY_ID}/connect" \
-  -H "Content-Type: application/json" \
-  -d "{\"directory\":\"$(pwd)\",\"pid\":$$,\"repo\":\"${REPO}\"}" > /dev/null 2>&1 || true
-
-curl -s -X POST "${BROKER_URL}/api/sessions/${ENTITY_ID}/status" \
-  -H "Content-Type: application/json" \
-  -d '{"status":"active"}' > /dev/null 2>&1 || true
+# RIGHT - put in the RECIPIENT's repo inbox
+/homelab-brain/.claude/handoff/inbox/CC2CC-dashboard-xxx.md  # YES!
 ```
 
-### 2. ALWAYS Git Pull First
+**Find CC repo location via broker API:**
+```bash
+# Get directory for any CC
+curl -s http://localhost:9500/api/entities/CC-brain | jq -r '.directory'
 
-**CRITICAL: This must happen BEFORE checking for tasks**
+# List all CCs with their directories
+curl -s http://localhost:9500/api/entities | jq -r '.entities[] | select(.type=="cc") | "\(.id): \(.directory)"'
+```
+
+## Steps
+
+### 1. Pull + Set Active
 
 ```bash
 git pull
+curl -s -X POST "http://localhost:9500/api/sessions/${ENTITY_ID}/status" \
+  -H "Content-Type: application/json" -d '{"status":"active"}' > /dev/null 2>&1
 ```
 
-This prevents working on stale local copy and missing tasks queued by PM.
+**Note:** Use YOUR entity ID (from `.claude/expert-profile.json`) in place of `${ENTITY_ID}`.
 
-### 3. Process ALL Tasks (Auto-Execute Loop)
-
-Check both `in-process/` and `todo/` directories for tasks.
-
-**Priority order:** critical > high > normal > low (then by task number)
-
-For EACH task found, execute these steps:
-
-#### a. Move to in-process/ (if from todo/)
-
-If task is in todo/, move it to in-process/:
+### 2. Check for Tasks
 
 ```bash
-git mv .claude/handoff/todo/TASK-XXX-description.md .claude/handoff/in-process/TASK-XXX-description.md
-git commit -m "Start TASK-XXX: {brief description}"
-git push
+# List all task files (works in both bash and zsh)
+ls .claude/handoff/inbox/ 2>/dev/null | grep -E "^(TASK-|CC2CC-|REPORT-|RESPONSE-).*\.md$"
 ```
 
-#### b. Execute the task
+If empty, also check `in-process/` for incomplete work.
 
-- Read the task file
-- Execute ALL requirements
-- NO confirmations - fully autonomous
-- Follow acceptance criteria exactly
+### 3. For Each Task
 
-#### c. Create response folder and move task
+**a) Claim it:**
+```bash
+git mv .claude/handoff/inbox/TASK-XXX.md .claude/handoff/in-process/
+git commit -m "Claim TASK-XXX" && git push
+```
 
+**b) Execute it** - Do the work. No confirmations needed.
+
+**c) Complete it:**
 ```bash
 mkdir -p .claude/handoff/complete/TASK-XXX
-git mv .claude/handoff/in-process/TASK-XXX-description.md .claude/handoff/complete/TASK-XXX/task.md
+# Write RESPONSE-XXX.md (see template below)
+git mv .claude/handoff/in-process/TASK-XXX.md .claude/handoff/complete/TASK-XXX/task.md
+git add -A && git commit -m "Complete TASK-XXX" && git push
 ```
 
-#### d. Write response
-
-Create `.claude/handoff/complete/TASK-XXX/RESPONSE-XXX.md` following the template.
-
-Update task status in task.md to COMPLETE.
-
-#### e. Commit and push
-
+**d) Notify broker:**
 ```bash
-git add .claude/handoff/complete/TASK-XXX/
-git commit -m "Complete TASK-XXX: {brief description}
-
-- {Changes made summary}
-- See RESPONSE-XXX.md for details
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 (1M context) <noreply@anthropic.com>"
-git push
-```
-
-#### f. POST response to broker (V4 protocol)
-
-```bash
-TASK_ID="TASK-XXX"
-SUMMARY="Brief 1-2 sentence summary"
-LOCATION="dougkimmerly/homelab-n8n/blob/main/.claude/handoff/complete/${TASK_ID}/RESPONSE-XXX.md"
-
 curl -s -X POST "http://localhost:9500/api/responses" \
   -H "Content-Type: application/json" \
-  -d "{\"from\":\"${ENTITY_ID}\",\"to\":\"PM-web-001\",\"task_id\":\"${TASK_ID}\",\"summary\":\"${SUMMARY}\",\"location\":\"${LOCATION}\"}" > /dev/null 2>&1 || true
+  -d '{"from":"${ENTITY_ID}","to":"PM-web-001","task_id":"TASK-XXX","summary":"Brief summary"}'
 ```
 
-#### g. Loop back
+**e) Loop** - Check for more tasks. Repeat until inbox is empty.
 
-Check for more tasks and repeat until queue is empty.
-
-### 4. When Queue Empty
-
-Set broker status to idle:
+### 4. When Done
 
 ```bash
 curl -s -X POST "http://localhost:9500/api/sessions/${ENTITY_ID}/status" \
-  -H "Content-Type: application/json" \
-  -d '{"status":"idle"}' > /dev/null 2>&1 || true
+  -H "Content-Type: application/json" -d '{"status":"idle"}' > /dev/null 2>&1
 ```
-
-Report to user: "All tasks complete. Queue empty."
 
 ## Response Template
 
-Every task response must use the Executive Summary + Full Report format:
-
 ```markdown
-# RESPONSE-XXX: {Task Title}
+# RESPONSE-XXX: Title
 
 **Task:** TASK-XXX
-**Status:** COMPLETE | BLOCKED | NEEDS_INFO
-**Completed:** {ISO 8601 timestamp}
-**Commit:** {git commit hash}
+**Status:** COMPLETE
+**Completed:** 2026-01-04T00:00:00Z
 
-## Executive Summary
+## Summary
+What was done in 2-3 sentences.
 
-- {What was done - one line}
-- {Key files changed - one line}
-- {Key outcome/result - one line}
+## Changes Made
+- `file.js` - What changed
 
----
-
-## Full Report
-
-### Summary
-{2-3 sentences}
-
-### Changes Made
-- `file.js` - What changed and why
-
-### Verification
-- ✅ Criterion 1 verified
-
-### Issues Encountered
-{Any blockers or "None"}
-
-### Next Steps
-{Follow-up tasks if needed}
+## Verification
+- Acceptance criteria met
 ```
 
 ## Key Rules
 
-1. **FULLY AUTONOMOUS** - Execute all tasks without asking for confirmation
-2. **ALWAYS git pull first** - Before checking for tasks
-3. **Process ALL tasks** - Loop until queue is empty
-4. **Priority order** - Process: critical > high > normal > low
-5. **Set broker status** - Active at start, idle when done
-6. **Follow response template** - Executive Summary + Full Report
-7. **POST to broker** - Every completed task
-8. **Check in-process/ first** - Complete claimed tasks before new ones
-9. **Commit after each task** - Don't batch
-10. **Use git mv** - Moves files between directories
+1. **inbox/** has incoming tasks - NOT for your own todos
+2. **Always git pull first**
+3. **No confirmations** - just execute
+4. **One task at a time** - claim, complete, then next
+5. **POST to broker** after each completion
 
-## Error Handling
+---
 
-- If broker connection fails: Continue anyway (use `|| true`)
-- If git pull fails: Report error and stop
-- If task execution fails: Create BLOCKED response, continue
-- If POST to broker fails: Continue silently
-- If git push fails: Report error and stop
+## Sending CC2CC Tasks
+
+When you need another CC to do something:
+
+### 1. Find their repo directory
+
+```bash
+# Get the target CC's directory from broker
+TARGET_DIR=$(curl -s http://localhost:9500/api/entities/CC-brain | jq -r '.directory')
+echo $TARGET_DIR
+```
+
+### 2. Write task to THEIR repo's inbox
+
+```bash
+# You are CC-dashboard, sending to CC-brain
+cat > "${TARGET_DIR}/.claude/handoff/inbox/CC2CC-dashboard-description.md" << 'EOF'
+# CC2CC Task: [Title]
+
+**From:** CC-dashboard
+**To:** CC-brain
+**Date:** 2026-01-04
+
+## Request
+What you need them to do...
+
+## Context
+Why you need it...
+
+## Expected Response
+What you want back...
+EOF
+```
+
+### 3. Commit and push THEIR repo
+
+```bash
+cd "${TARGET_DIR}"
+git add .claude/handoff/inbox/CC2CC-*.md
+git commit -m "CC2CC: Request from $(basename $(pwd))"
+git push
+```
+
+### 4. Return to your repo
+
+```bash
+cd -  # or cd back to your repo
+```
+
+**Remember:** You're writing to THEIR inbox, not yours!
+
+---
+
+## Responding to CC2CC Tasks
+
+When you complete a CC2CC task from another CC, you must send a REPORT back to the SENDER's inbox.
+
+### 1. Complete the task in YOUR repo
+
+```bash
+# Move task to complete folder (in YOUR repo)
+mkdir -p .claude/handoff/complete/CC2CC-sender-description
+git mv .claude/handoff/in-process/CC2CC-sender-description.md .claude/handoff/complete/CC2CC-sender-description/task.md
+# Create your response
+cat > .claude/handoff/complete/CC2CC-sender-description/RESPONSE.md << 'EOF'
+# Response: [Title]
+**Status:** COMPLETE
+## Summary
+What you did...
+EOF
+git add -A && git commit -m "Complete CC2CC task" && git push
+```
+
+### 2. Find the SENDER's repo directory
+
+```bash
+# The sender is in the task's "From:" field
+# Get their directory from broker
+SENDER_DIR=$(curl -s http://localhost:9500/api/entities/CC-dashboard | jq -r '.directory')
+echo $SENDER_DIR
+```
+
+### 3. Write REPORT to SENDER's inbox
+
+```bash
+# You are CC-brain, responding to CC-dashboard
+cat > "${SENDER_DIR}/.claude/handoff/inbox/REPORT-brain-description.md" << 'EOF'
+# REPORT: [Title]
+
+**From:** CC-brain
+**To:** CC-dashboard
+**Original Task:** CC2CC-dashboard-description
+**Status:** COMPLETE
+**Completed:** 2026-01-04T05:00:00Z
+
+## Summary
+What was done...
+
+## Details
+Key information they need...
+EOF
+```
+
+### 4. Commit and push SENDER's repo
+
+```bash
+cd "${SENDER_DIR}"
+git add .claude/handoff/inbox/REPORT-*.md
+git commit -m "REPORT: Response from CC-brain"
+git push
+cd -  # return to your repo
+```
+
+### Key Points
+
+- REPORT goes to **SENDER's inbox**, not your complete folder
+- SENDER's entity ID is in the task's **From:** field
+- Use broker API to find their directory: `curl -s http://localhost:9500/api/entities/CC-xxx | jq -r '.directory'`
+- File naming: `REPORT-{your-entity}-{description}.md`
+
+---
+
+## Processing REPORT Files (rpt command)
+
+When you receive `rpt` command, another CC has sent you a REPORT in response to a CC2CC task you sent them.
+
+### 1. Check inbox for REPORT/RESPONSE files
+
+```bash
+# Accept both REPORT-* and RESPONSE-* (either naming works)
+ls .claude/handoff/inbox/ 2>/dev/null | grep -E "^(REPORT-|RESPONSE-).*\.md$"
+```
+
+### 2. Claim the REPORT (move to in-process)
+
+```bash
+git mv .claude/handoff/inbox/REPORT-xxx.md .claude/handoff/in-process/
+git commit -m "Claim REPORT-xxx" && git push
+```
+
+**Important:** If you don't move it to in-process, the broker will keep reminding you it's there!
+
+### 3. Read and process the report
+
+```bash
+cat .claude/handoff/in-process/REPORT-xxx.md
+```
+
+- Review what they completed
+- Take any follow-up actions needed
+- Use the information provided
+
+### 4. Move to complete when done
+
+```bash
+mkdir -p .claude/handoff/complete/REPORT-xxx
+git mv .claude/handoff/in-process/REPORT-xxx.md .claude/handoff/complete/REPORT-xxx/report.md
+git add -A && git commit -m "Process REPORT-xxx: [what you did with it]" && git push
+```
+
+### Key Points
+
+- REPORT files arrive in YOUR **inbox/** (not complete/)
+- Treat them like tasks: claim → process → complete
+- No need to respond back - REPORT is the final message in the CC2CC exchange
+- Move to in-process to stop broker reminders

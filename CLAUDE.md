@@ -94,7 +94,7 @@ Your expertise lives in these skill files. **Read them at session start** and **
 ## MCP Access
 
 You have MCP tools for n8n:
-- `n8n-casaos:*` - Docker Server instance operations
+- `n8n-docker-server:*` - Docker Server instance operations (also aliased as `n8n-casaos:*`)
 - `n8n-mac:*` - Mac instance operations
 
 Key operations:
@@ -211,7 +211,7 @@ homelab-n8n/
 |----------|-----|--------|---------|---------|
 | Galley Recipe Scanner | jhz0aTSMaqnbHddS | Active | Daily 6am + Webhook | Extract recipes from scanned images/PDFs using Claude |
 | Galley Local Scan Upload | eJSYcTSOqISOdjYh | Active | Webhook POST | Process local scans (base64) from Galley app |
-| Workflow Backup to GitHub - CasaOS | sxcb1pmVzDnwX4Hf | Active | Every 6 hours | Backup all workflows to GitHub |
+| Workflow Backup to GitHub - Docker Server | sxcb1pmVzDnwX4Hf | Active | Every 6 hours | Backup all workflows to GitHub |
 | Galley Scanner Status | v8Ecqgjmv15tlmoR | Active | Webhook | Return pending scan count for Galley app |
 | Music Library Nightly Maintenance | wchLTqQ48tNI7bZk | Active | Daily 2am | Scan, enrich, tag, and fetch lyrics |
 

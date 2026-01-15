@@ -121,8 +121,8 @@ In n8n UI:
 
 ### 4. Check Logs
 ```bash
-# CasaOS
-ssh casaos@192.168.20.19
+# Docker Server
+ssh doug@192.168.20.19
 docker logs n8n --tail 100
 
 # Mac (if running as service)
@@ -131,10 +131,10 @@ tail -f ~/Library/Logs/n8n.log
 
 ## Instance-Specific Issues
 
-### CasaOS (192.168.20.19)
+### Docker Server (192.168.20.19)
 - May need Docker restart: `docker restart n8n`
 - Check container health: `docker ps | grep n8n`
-- Volume permissions: data in `/DATA/AppData/n8n`
+- Volume permissions: data in `/opt/docker-server/n8n/data`
 
 ### Mac (localhost)
 - Check if running: `pgrep -f n8n`

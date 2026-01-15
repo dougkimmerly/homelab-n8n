@@ -15,7 +15,7 @@ This repository manages n8n workflows that automate various homelab tasks includ
 
 | Instance | Location | Purpose |
 |----------|----------|---------|
-| CasaOS | 192.168.20.19:5678 | Production workflows |
+| Docker Server | 192.168.20.19:5678 | Production workflows |
 | Mac | localhost:5678 | Development and testing |
 | Synology | 192.168.20.16:5679 | Secondary/backup |
 
@@ -23,13 +23,13 @@ This repository manages n8n workflows that automate various homelab tasks includ
 
 ```
 ├── workflows/
-│   ├── backup/       # JSON exports of all workflows
-│   │   ├── casaos/   # CasaOS instance workflows
-│   │   └── mac/      # Mac instance workflows
-│   ├── templates/    # Reusable workflow patterns
-│   └── docs/         # Per-workflow documentation
-├── scripts/          # Helper scripts
-└── .claude/          # Claude Code integration
+│   ├── backup/            # JSON exports of all workflows
+│   │   ├── docker-server/ # Docker Server instance workflows
+│   │   └── mac/           # Mac instance workflows
+│   ├── templates/         # Reusable workflow patterns
+│   └── docs/              # Per-workflow documentation
+├── scripts/               # Helper scripts
+└── .claude/               # Claude Code integration
 ```
 
 ## Workflow Categories
@@ -49,4 +49,4 @@ Other homelab projects can request n8n workflows by adding tasks to `.claude/han
 
 - [homelab](https://github.com/dougkimmerly/homelab) - Main documentation
 - [homelab-synology](https://github.com/dougkimmerly/homelab-synology) - Synology services
-- [homelab-casaos](https://github.com/dougkimmerly/homelab-casaos) - CasaOS services
+- [homelab-docker-server](https://github.com/dougkimmerly/homelab-docker-server) - Docker Server services
